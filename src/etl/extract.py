@@ -4,7 +4,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, StaleElementReferenceException # Importa a nova exceção
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 import os
 import time
 import shutil
@@ -55,7 +55,9 @@ def configurar_driver(caminho_download):
         os.makedirs(caminho_download)
         print(f"Pasta de download criada em: {caminho_download}")
 
+    
     chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
     prefs = {
         "download.default_directory": caminho_download,
         "download.prompt_for_download": False,
@@ -100,7 +102,6 @@ def fazer_login(driver, usuario, senha):
 
 
 def navegar_para_area(driver, locator_principal, locator_secundario, nome_da_area):
-    # ... (código existente)
     print(f"Navegando para a área '{nome_da_area}'...")
     botao_principal = WebDriverWait(driver, 20).until(EC.element_to_be_clickable(locator_principal))
     botao_principal.click()

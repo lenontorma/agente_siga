@@ -1,6 +1,7 @@
 import pandas as pd
 from pydantic import BaseModel, ValidationError, Field
 from typing import Optional, Any
+from datetime import datetime, date
 
 class ContratoDadosBrutos(BaseModel):
     Recurso: Optional[Any] = None
@@ -11,7 +12,7 @@ class ContratoDadosBrutos(BaseModel):
     Fim: Optional[Any] = None
     Duração: Optional[Any] = None
     Tempo_de_Deslocamento: Optional[Any] = Field(alias='Tempo de Deslocamento', default=None)
-    Tipo_de_Atividade: Optional[Any] = Field(alias='Tipo de Atividade', default=None)
+    Tipo_de_Atividade: Optional[Any] = Field(alias='Tipo de Atividade', default=None) # Apenas uma definição é necessária
     Ordem_de_Serviço: Optional[Any] = Field(alias='Ordem de Serviço', default=None)
     Abrangência: Optional[Any] = None
     Tipo_de_Natureza_Text: Optional[Any] = Field(alias='Tipo de Natureza - Text', default=None)
@@ -40,14 +41,13 @@ class ContratoDadosBrutos(BaseModel):
     Instalação: Optional[Any] = None
 
     class Config:
-        extra = 'allow' # Permite as 28 colunas extras
+        extra = 'allow'
         populate_by_name = True
 
 def validar_dados(df: pd.DataFrame, modelo_contrato: BaseModel, nome_arquivo: str):
     """Valida a estrutura de um DataFrame contra um contrato Pydantic."""
     print(f"Iniciando validação do contrato '{modelo_contrato.__name__}' para o arquivo: {nome_arquivo}")
     
-    # Preenche vazios com None para uma validação consistente
     df_para_validar = df.astype(object).where(pd.notnull(df), None)
     
     erros = []
