@@ -3,7 +3,7 @@ name = "agente-siga"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Lenon Torma",email = "lenoncastro18@gmail.com"}
+    {name = "Lenon Torma", email = "lenoncastro18@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.13"
@@ -12,9 +12,8 @@ dependencies = [
     "python-dotenv (>=1.1.1,<2.0.0)",
     "pandas (>=2.3.2,<3.0.0)",
     "openpyxl (>=3.1.5,<4.0.0)",
-    "pydantic (>=2.11.7,<3.0.0)"
+    "pydantic (>=2.11.7,<3.0.0)",
 ]
-
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
