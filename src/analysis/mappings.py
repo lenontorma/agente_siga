@@ -1,3 +1,21 @@
+from dotenv import load_dotenv
+import os
+
+try:
+    caminho_script = os.path.abspath(__file__)
+    caminho_etl = os.path.dirname(caminho_script)
+    caminho_src = os.path.dirname(caminho_etl)
+    caminho_raiz_projeto = os.path.dirname(caminho_src)
+    load_dotenv(os.path.join(caminho_raiz_projeto, '.env'))
+except Exception as e:
+    print(f"Aviso: Não foi possível carregar o arquivo .env em mappings.py. Erro: {e}")
+
+
+# 1. Lê a string do .env, com um valor padrão de string vazia se não encontrar
+user_ids_str = os.getenv("TELEGRAM_USER_IDS", "")
+# 2. Converte a string em uma lista de IDs, removendo espaços e itens vazios
+LISTA_DE_IDS_PRINCIPAL = [uid.strip() for uid in user_ids_str.split(',') if uid.strip()]
+
 # ==============================================================================
 # MAPEAMENTOS DE DADOS (REGRAS DE NEGÓCIO)
 # ==============================================================================
@@ -62,3 +80,13 @@ ATIVIDADES_ANEXO_IV = {
     "LIGANOVA - Ligação Nova",
     "DSBTPDCL - Desligamento De Unidade Consumidora"
 }
+
+
+MAPEAMENTO_ALERTAS_SECCIONAL = {
+    'SUL': LISTA_DE_IDS_PRINCIPAL,
+    'CENTRO SUL': LISTA_DE_IDS_PRINCIPAL,
+    'LITORAL SUL': LISTA_DE_IDS_PRINCIPAL,
+    'CAMPANHA': LISTA_DE_IDS_PRINCIPAL,
+    'GERAL': LISTA_DE_IDS_PRINCIPAL 
+}
+
