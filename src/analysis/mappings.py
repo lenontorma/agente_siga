@@ -5,11 +5,11 @@
 
 MAPEAMENTO_PROCESSO = {
     'C0': 'CORTE',
-    'F0': 'FISCALIZAÇÃO',
-    'L0': 'LIGAÇÃO NOVA',
+    'F0': 'FISCALIZACAO',
+    'L0': 'LIGACAO NOVA',
     'E0': 'EMERGENCIAL',
     'H0': 'CORTE MOTO',
-    'A0': 'FISCALIZAÇÃO'
+    'A0': 'FISCALIZACAO'
 }
 
 

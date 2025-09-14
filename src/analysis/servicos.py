@@ -63,7 +63,43 @@ def classificar_os_para_alerta(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
     }
 
 
-# A função buscar_ordem_servico continua a mesma aqui, se você a tiver neste arquivo.
 def buscar_ordem_servico(df: pd.DataFrame, numero_os: str) -> str:
-    # ... código existente ...
+    """
+    Busca por uma Ordem de Serviço específica no DataFrame e retorna uma
+    string formatada com seus detalhes.
+    """
+    if not numero_os:
+        return "Por favor, forneça um número de Ordem de Serviço para a busca."
+
+    termo_busca = str(numero_os).strip()
+    coluna_busca = df['Ordem de Serviço'].astype(str).str.strip()
+    resultado = df[coluna_busca == termo_busca]
+
+    if resultado.empty:
+        return f"❌ Nenhuma Ordem de Serviço encontrada com o número: '{termo_busca}'"
+    if len(resultado) > 1:
+        return f"⚠️ Alerta: Encontradas {len(resultado)} Ordens de Serviço com o número '{termo_busca}'."
+
+    servico = resultado.iloc[0]
+    data_limite_formatada = servico['Data Limite'].strftime('%d/%m/%Y %H:%M') if pd.notna(servico['Data Limite']) else 'N/A'
+
+    resposta = f"✅ *OS Encontrada: `{servico['Ordem de Serviço']}`*\n\n"
+    resposta += "*Serviço:*\n"
+    resposta += f"- *Tipo:* {servico['Tipo de Atividade']}\n"
+    resposta += f"- *Status:* {servico['Status da Atividade']}\n"
+    resposta += f"- *Processo:* {servico['Processo']}\n\n"
+    resposta += "*Localização:*\n"
+    resposta += f"- *Cidade:* {servico['Cidade']}\n"
+    resposta += f"- *Seccional:* {servico['Seccional']}\n"
+    resposta += f"- *Recurso:* {servico['Recurso']}\n\n"
+    resposta += "*Prazos:*\n"
+    resposta += f"- *Data Limite:* {data_limite_formatada}\n"
+    return resposta
+
+
+# --- Bloco para Teste Independente ---
+if __name__ == '__main__':
+    # Este bloco pode ser usado para testes manuais, se necessário.
+    print("Este arquivo contém funções de análise e não deve ser executado diretamente.")
+    print("Execute os scripts de teste em 'produtividade.py' ou 'alerta_vencimentos.py'.")
     pass
