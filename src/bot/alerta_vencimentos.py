@@ -13,26 +13,22 @@ finally:
     del sys
 
 from analysis.data_loader import carregar_dados
-from analysis.servicos import encontrar_os_proximas_vencimento
+from analysis.servicos import classificar_os_para_alerta
 
-def formatar_mensagem(df_seccional: pd.DataFrame, nome_seccional: str) -> str:
-    """Formata a lista de OS para uma seccional específica."""
-    
-    # --- CABEÇALHO ESPECÍFICO DA SECCIONAL ---
-    mensagem = f"📍 *Seccional: {nome_seccional.upper()}*\n"
-    mensagem += "-----------------------------------\n"
-
-    for _, os_info in df_seccional.iterrows():
+def formatar_linhas_os(df_linhas: pd.DataFrame) -> str:
+    """Função auxiliar que formata as linhas de um DataFrame de OS para texto."""
+    texto = ""
+    # Ordena por Data Limite para a mensagem ficar cronológica
+    for _, os_info in df_linhas.sort_values(by='Data Limite').iterrows():
         data_limite = os_info['Data Limite'].strftime('%d/%m/%Y %H:%M')
         
-        mensagem += f"🔩 *Instalação:* `{os_info['Instalação']}`\n"
-        mensagem += f"   - *Tipo:* {os_info['Tipo de Atividade']}\n"
-        mensagem += f"   - *Status Atual:* {os_info['Status da Atividade']}\n"
-        mensagem += f"   - *Vencimento:* {data_limite}\n"
-        mensagem += f"   - *Equipe:* {os_info['Recurso']}\n"
-        mensagem += f"   - *Cidade:* {os_info['Cidade']}\n\n"
-    
-    return mensagem
+        texto += f"🔩 *Instalação:* `{os_info['Instalação']}`\n"
+        texto += f"   - *Tipo:* {os_info['Tipo de Atividade']}\n"
+        texto += f"   - *Status Atual:* {os_info['Status da Atividade']}\n"
+        texto += f"   - *Vencimento:* {data_limite}\n"
+        texto += f"   - *Equipe:* {os_info['Recurso']}\n"
+        texto += f"   - *Cidade:* {os_info['Cidade']}\n\n"
+    return texto
 
 def enviar_alertas():
     """
@@ -58,35 +54,49 @@ def enviar_alertas():
             print("Não foi possível carregar os dados. Abortando alertas.")
             return
 
-        df_para_alertar = encontrar_os_proximas_vencimento(df_completo)
+        alertas_classificados = classificar_os_para_alerta(df_completo)
 
-        if df_para_alertar.empty:
-            print("Nenhuma OS próxima do vencimento encontrada. Nenhuma mensagem enviada.")
+        df_vencidas = alertas_classificados["vencidas"]
+        df_hoje = alertas_classificados["vencendo_hoje"]
+        df_amanha = alertas_classificados["vencendo_amanha"]
+        
+        df_para_alertar_total = pd.concat([df_vencidas, df_hoje, df_amanha])
+        
+        if df_para_alertar_total.empty:
+            print("Nenhuma OS para alertar. Nenhuma mensagem enviada.")
             return
 
-        # --- LÓGICA DE AGRUPAMENTO POR SECCIONAL ---
+        mensagem_final = "🚨 *Alerta de Vencimento de OS (Anexo IV)* 🚨\n"
         
-        # 1. Encontra a lista de seccionais únicas que têm alertas
-        seccionais_com_alerta = df_para_alertar['Seccional'].unique()
+        seccionais_com_alerta = df_para_alertar_total['Seccional'].unique()
         
-        mensagem_final_completa = "🚨 *Alerta de Vencimento de OS (Anexo IV)* 🚨\n\n"
-        
-        # 2. Faz um loop por cada seccional
-        for seccional in seccionais_com_alerta:
-            # Filtra o DataFrame apenas para a seccional atual
-            df_da_seccional = df_para_alertar[df_para_alertar['Seccional'] == seccional]
+        for seccional in sorted(seccionais_com_alerta):
+            mensagem_final += f"\n\n📍 *Seccional: {seccional.upper()}*"
+            mensagem_final += "\n-----------------------------------"
             
-            # 3. Formata um bloco de mensagem para esta seccional
-            bloco_mensagem_seccional = formatar_mensagem(df_da_seccional, seccional)
-            mensagem_final_completa += bloco_mensagem_seccional
-        
+            # Filtra os alertas para a seccional atual
+            df_vencidas_sec = df_vencidas[df_vencidas['Seccional'] == seccional]
+            df_hoje_sec = df_hoje[df_hoje['Seccional'] == seccional]
+            df_amanha_sec = df_amanha[df_amanha['Seccional'] == seccional]
+            
+            if not df_vencidas_sec.empty:
+                mensagem_final += "\n\n🆘 *VENCIDAS* 🆘\n"
+                mensagem_final += formatar_linhas_os(df_vencidas_sec)
+
+            # --- LÓGICA DE UNIFICAÇÃO APLICADA AQUI ---
+            # 1. Concatena os DataFrames de vencimentos próximos
+            df_proximos_sec = pd.concat([df_hoje_sec, df_amanha_sec])
+
+            # 2. Se a lista combinada não estiver vazia, cria a nova seção
+            if not df_proximos_sec.empty:
+                mensagem_final += "\n⚠️ *VENCIMENTO PRÓXIMO* ⚠️\n"
+                mensagem_final += formatar_linhas_os(df_proximos_sec)
+
         bot = telebot.TeleBot(bot_token)
-        
-        print(f"Enviando alertas agrupados por seccional para {len(lista_de_ids)} usuários...")
+        print(f"Enviando alertas agrupados para {len(lista_de_ids)} usuários...")
         for user_id in lista_de_ids:
             try:
-                # 4. Envia a mensagem completa e agrupada
-                bot.send_message(user_id, mensagem_final_completa, parse_mode='Markdown')
+                bot.send_message(user_id, mensagem_final, parse_mode='Markdown')
                 print(f"  - Alerta enviado com sucesso para o usuário ID: {user_id}")
             except Exception as e:
                 print(f"  - Falha ao enviar para o usuário ID: {user_id}. Erro: {e}")
