@@ -1,62 +1,66 @@
 import pandas as pd
+from typing import Dict
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
+import os
 
-def encontrar_os_proximas_vencimento(df: pd.DataFrame) -> pd.DataFrame:
+def classificar_os_para_alerta(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
     """
-    Filtra o DataFrame para encontrar OS de Anexo IV que estão pendentes e que
-    vencem HOJE (qualquer horário) ou AMANHÃ (até as 08:00).
+    Filtra e classifica OS de Anexo IV pendentes em três categorias:
+    'vencidas', 'vencendo_hoje', e 'vencendo_amanha'.
+    Retorna um dicionário de DataFrames.
     """
-    print("\n--- INICIANDO DIAGNÓSTICO DE BUSCA POR OS PRÓXIMAS DO VENCIMENTO ---")
+    print("\nClassificando OS de Anexo IV para alertas...")
     
-    # Define os status que consideramos como 'em andamento'
     status_pendentes = ['deslocamento', 'pendente', 'iniciado']
     
-    # --- LÓGICA DE DATA E HORA PRECISA ---
     fuso_horario_brasil = ZoneInfo("America/Sao_Paulo")
-    
     agora = datetime.now(fuso_horario_brasil)
-    amanha = agora + timedelta(days=1)
+    
+    # Remove o fuso horário para comparações diretas com o DataFrame
+    agora_naive = agora.replace(tzinfo=None)
+    amanha = agora_naive + timedelta(days=1)
     amanha_as_8 = amanha.replace(hour=8, minute=0, second=0, microsecond=0)
     
-    print(f"1. Referências de tempo (Fuso Horário: {fuso_horario_brasil}):")
-    print(f"   - Agora: {agora.strftime('%d/%m/%Y %H:%M:%S')}")
-    print(f"   - Limite do alerta: {amanha_as_8.strftime('%d/%m/%Y %H:%M:%S')}")
-
-    # Garante que a coluna 'Data Limite' seja do tipo datetime (timezone-naive)
     df['Data Limite'] = pd.to_datetime(df['Data Limite'])
     
-    # --- FILTROS INICIAIS (ANTES DA DATA) ---
-    df_filtrado_inicial = df[
+    # Filtro base: Pega todas as OS que são Anexo IV e estão pendentes
+    df_base = df[
         (df['Anexo IV'] == 'Sim') &
         (df['Status da Atividade'].str.lower().isin(status_pendentes))
     ].copy()
+
+    # --- LÓGICA DE FILTRO CORRIGIDA ---
+
+    # Categoria 1: VENCIDAS
+    # A Data Limite é qualquer data/hora ANTERIOR a agora.
+    df_vencidas = df_base[
+        df_base['Data Limite'] < agora_naive
+    ].sort_values(by='Data Limite')
+
+    # Categoria 2: VENCENDO HOJE
+    # A Data Limite é para hoje e ainda está no futuro.
+    df_vencendo_hoje = df_base[
+        (df_base['Data Limite'] >= agora_naive) &
+        (df_base['Data Limite'].dt.date == agora_naive.date())
+    ].sort_values(by='Data Limite')
     
-    print(f"\n2. Resultado dos filtros iniciais (Anexo IV='Sim' e Status Pendente):")
-    print(f"   - {len(df_filtrado_inicial)} OS encontradas ANTES do filtro de data.")
+    # Categoria 3: VENCENDO AMANHÃ
+    # A Data Limite é para amanhã, até as 08:00.
+    df_vencendo_amanha = df_base[
+        (df_base['Data Limite'].dt.date == amanha.date()) &
+        (df_base['Data Limite'] < amanha_as_8)
+    ].sort_values(by='Data Limite')
 
-    if df_filtrado_inicial.empty:
-        print("   - Nenhuma OS passou nos filtros iniciais. Verifique os status e a marcação 'Anexo IV'.")
-        return df_filtrado_inicial
-
-    print("   - Amostra das 'Datas Limite' encontradas (antes do filtro final):")
-    print(df_filtrado_inicial[['Ordem de Serviço', 'Data Limite']].head().to_string(index=False))
+    print(f"  - Encontradas {len(df_vencidas)} OS vencidas (de hoje ou dias anteriores).")
+    print(f"  - Encontradas {len(df_vencendo_hoje)} OS vencendo ainda hoje.")
+    print(f"  - Encontradas {len(df_vencendo_amanha)} OS vencendo amanhã até as 08:00.")
     
-    # --- FILTRO FINAL DE DATA ---
-    # Converte os limites de tempo para timezone-naive para comparar com a coluna do DataFrame
-    agora_naive = agora.replace(tzinfo=None)
-    amanha_as_8_naive = amanha_as_8.replace(tzinfo=None)
-
-    df_filtrado_final = df_filtrado_inicial[
-        (df_filtrado_inicial['Data Limite'] >= agora_naive) &
-        (df_filtrado_inicial['Data Limite'] <= amanha_as_8_naive)
-    ].copy()
-
-    print(f"\n3. Resultado do filtro final de data:")
-    print(f"   - {len(df_filtrado_final)} OS encontradas COM VENCIMENTO até amanhã às 08:00.")
-    print("--- FIM DO DIAGNÓSTICO ---\n")
-    
-    return df_filtrado_final.sort_values(by='Data Limite')
+    return {
+        "vencidas": df_vencidas, # Nome da chave atualizado
+        "vencendo_hoje": df_vencendo_hoje,
+        "vencendo_amanha": df_vencendo_amanha
+    }
 
 
 # A função buscar_ordem_servico continua a mesma aqui, se você a tiver neste arquivo.
