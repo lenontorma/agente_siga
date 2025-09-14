@@ -1,13 +1,27 @@
 import pandas as pd
 import os
-from contracts import ContratoDadosBrutos, validar_dados
-import mappings
+import sys # Importa a biblioteca do sistema
+
+# --- Bloco de código para encontrar a pasta 'src' e permitir a execução autônoma ---
+try:
+    caminho_src = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if caminho_src not in sys.path:
+        sys.path.append(caminho_src)
+finally:
+    # Remove as variáveis para não poluir o namespace global
+    del sys
+# --- Fim do Bloco ---
+
+# --- Imports ajustados para serem absolutos a partir de 'src' ---
+from etl.contracts import ContratoDadosBrutos, validar_dados
+from analysis import mappings
 import openpyxl
 import numpy as np
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 # --- CONFIGURAÇÃO DE CAMINHOS ---
+# Sobe três níveis (transform.py -> etl -> src -> agente_siga)
 CAMINHO_RAIZ_PROJETO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CAMINHO_DATA = os.path.join(CAMINHO_RAIZ_PROJETO, "Data")
 
@@ -16,13 +30,24 @@ CAMINHO_PROD_FISC = os.path.join(CAMINHO_DATA, "prod_fisc.csv")
 
 
 def processar_arquivo(caminho_arquivo: str, nome_arquivo: str) -> pd.DataFrame:
-    # ... (esta função continua a mesma)
+    """
+    Função completa para processar um único arquivo: ler, validar, tratar duplicatas e transformar.
+    """
     print(f"\n--- Processando arquivo: {nome_arquivo} ---")
+    
+    # 1. Leitura do arquivo bruto
     df_bruto = pd.read_csv(caminho_arquivo, dtype=str).fillna('')
     print(f"Arquivo lido com {df_bruto.shape[0]} linhas e {df_bruto.shape[1]} colunas.")
+    
+    # 2. VALIDAÇÃO ESTRUTURAL (BRONZE)
+    validar_dados(df_bruto, ContratoDadosBrutos, nome_arquivo)
+    
+    # 3. TRANSFORMAÇÃO E LIMPEZA
+    print("\nTratando colunas duplicadas e selecionando colunas de produção...")
     coluna_alvo_texto = "Tipo de Atividade"
     lista_colunas = df_bruto.columns.to_list()
     indices_encontrados = [i for i, col in enumerate(lista_colunas) if coluna_alvo_texto in col]
+    
     if len(indices_encontrados) >= 2:
         idx_primeira = indices_encontrados[0]
         idx_segunda = indices_encontrados[1]
@@ -30,46 +55,62 @@ def processar_arquivo(caminho_arquivo: str, nome_arquivo: str) -> pd.DataFrame:
         lista_colunas[idx_segunda] = "Tipo de Atividade"
         df_bruto.columns = lista_colunas
         print("  - Coluna 'Tipo de Atividade' duplicada foi tratada.")
-    validar_dados(df_bruto, ContratoDadosBrutos, nome_arquivo)
-    print("\nSelecionando as colunas de produção...")
+    
     colunas_producao = [
-        "Recurso", "Data", "Status da Atividade", "Cidade", "Início", "Fim", "Duração", "Tempo de Deslocamento",
-        "Tipo de Atividade", "Ordem de Serviço", "Abrangência", "Tipo de Natureza - Text", "Tipo de Causa - Text",
+        "Recurso", "Data", "Status da Atividade", "Cidade", "Início", "Fim",
+        "Duração", "Tempo de Deslocamento", "Tipo de Atividade", "Ordem de Serviço",
+        "Abrangência", "Tipo de Natureza - Text", "Tipo de Causa - Text", 
         "SubTipo de Causa - Text", "Tipo de Conclusão Executada", "Tipo de Conclusão",
-        "Tipo de Conclusão Não Executada", "Latitude", "Longitude", "Posição na Rota", "Status da Coordenada",
-        "Área de Deslocamento", "Data Limite", "Data Abertura", "Valor Total Contrato", "Valor", "Code",
-        "Número Ocorrência", "Número da Nota", "Número de Clientes Interrompidos", "Medidor Retirado",
-        "Medidor Instalado", "Observação", "Tipo de Indisponibilidade", "Instalação"
+        "Tipo de Conclusão Não Executada", "Latitude", "Longitude", "Posição na Rota",
+        "Status da Coordenada", "Área de Deslocamento", "Data Limite", "Data Abertura",
+        "Valor Total Contrato", "Valor", "Code", "Número Ocorrência", "Número da Nota",
+        "Número de Clientes Interrompidos", "Medidor Retirado", "Medidor Instalado",
+        "Observação", "Tipo de Indisponibilidade", "Instalação"
     ]
     df_producao = df_bruto[colunas_producao].copy()
+    
+    # 4. CONVERSÃO DE TIPOS
     print("Convertendo tipos de dados...")
     formato_completo = '%d/%m/%Y %H:%M:%S'
     formato_ano_curto = '%d/%m/%y'
+    
     for col in ['Data Limite', 'Data Abertura']:
         df_producao[col] = pd.to_datetime(df_producao[col], format=formato_completo, errors='coerce')
+        
     df_producao['Data'] = pd.to_datetime(df_producao['Data'], format=formato_ano_curto, errors='coerce')
-    df_producao['Início'] = pd.to_datetime(df_producao['Data'].dt.strftime('%Y-%m-%d') + ' ' + df_producao['Início'].astype(str).str.strip(), errors='coerce')
-    df_producao['Fim'] = pd.to_datetime(df_producao['Data'].dt.strftime('%Y-%m-%d') + ' ' + df_producao['Fim'].astype(str).str.strip(), errors='coerce')
+    
+    df_producao['Início'] = pd.to_datetime(
+        df_producao['Data'].dt.strftime('%Y-%m-%d') + ' ' + df_producao['Início'].astype(str).str.strip(),
+        errors='coerce'
+    )
+    df_producao['Fim'] = pd.to_datetime(
+        df_producao['Data'].dt.strftime('%Y-%m-%d') + ' ' + df_producao['Fim'].astype(str).str.strip(),
+        errors='coerce'
+    )
+    
     print("Limpeza e conversão de tipos concluída.")
     return df_producao
 
+
 def definir_processo(df: pd.DataFrame) -> pd.DataFrame:
-    # ... (esta função continua a mesma)
+    """Cria a coluna 'Processo' com base em um código extraído da coluna 'Recurso'."""
     print("\nAdicionando a coluna 'Processo'...")
     codigos_extraidos = df['Recurso'].str.extract(r'-([A-Z]0)', expand=False)
     df['Processo'] = codigos_extraidos.map(mappings.MAPEAMENTO_PROCESSO).fillna('')
     print("  ✅ Coluna 'Processo' criada com sucesso.")
     return df
 
+
 def definir_seccional(df: pd.DataFrame) -> pd.DataFrame:
-    # ... (esta função continua a mesma)
+    """Cria a coluna 'Seccional' com base no mapeamento da coluna 'Cidade'."""
     print("\nAdicionando a coluna 'Seccional'...")
     df['Seccional'] = df['Cidade'].str.upper().map(mappings.MAPEAMENTO_SECCIONAL).fillna('Não Mapeado')
     print("  ✅ Coluna 'Seccional' criada com sucesso.")
     return df
 
+
 def definir_anexo_iv(df: pd.DataFrame) -> pd.DataFrame:
-    # ... (esta função continua a mesma)
+    """Cria a coluna 'Anexo IV' classificando o 'Tipo de Atividade' em Sim/Não."""
     print("\nAdicionando a coluna 'Anexo IV'...")
     df['Anexo IV'] = np.where(df['Tipo de Atividade'].isin(mappings.ATIVIDADES_ANEXO_IV), 'Sim', 'Não')
     print("  ✅ Coluna 'Anexo IV' criada com sucesso.")
@@ -110,15 +151,19 @@ def run_transformation():
         prod_gstc_df = definir_anexo_iv(prod_gstc_df)
 
         print("\nVerificando se alguma coluna está 100% vazia no DataFrame final...")
-        # ... (código de verificação de colunas vazias)
+        colunas_vazias_series = prod_gstc_df.isnull().all()
+        colunas_totalmente_vazias = colunas_vazias_series[colunas_vazias_series].index.tolist()
+        if colunas_totalmente_vazias:
+            print(f"  [ALERTA DE QUALIDADE] As seguintes colunas estão 100% vazias (sem nenhum valor):")
+            for coluna in colunas_totalmente_vazias:
+                print(f"    - {coluna}")
+        else:
+            print("  ✅ Nenhuma coluna está 100% vazia. Verificação de qualidade aprovada.")
         
-        # --- CORREÇÃO: REMOVER FUSO HORÁRIO ANTES DE SALVAR ---
         print("\nPreparando colunas de data/hora para exportação para Excel...")
-        # A coluna 'Data_Extracao' é a única com fuso horário
         prod_gstc_df['Data_Extracao'] = prod_gstc_df['Data_Extracao'].dt.tz_localize(None)
         print("  - Fuso horário removido da coluna 'Data_Extracao'.")
         
-        # --- SALVANDO ARQUIVO FINAL ---
         caminho_saida = os.path.join(CAMINHO_DATA, "prod_gstc.xlsx")
         prod_gstc_df.to_excel(caminho_saida, index=False)
         print(f"\nArquivo final salvo em: {caminho_saida}")
