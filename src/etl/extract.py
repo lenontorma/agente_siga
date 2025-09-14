@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 USUARIO_SIGA = os.getenv("USUARIO_SIGA")
 SENHA_SIGA = os.getenv("SENHA_SIGA")
+URL_SITE = os.getenv("URL_SITE")
 CAMINHO_SCRIPT = os.path.abspath(__file__)
 DIRETORIO_SRC = os.path.dirname(os.path.dirname(CAMINHO_SCRIPT))
 CAMINHO_RAIZ_PROJETO = os.path.dirname(DIRETORIO_SRC)
@@ -47,7 +48,7 @@ def configurar_driver(caminho_download):
 
 def fazer_login(driver, usuario, senha):
     #...código existente...
-    url = "https://equatorialenergia.etadirect.com/"
+    url = URL_SITE
     driver.get(url)
     print(f"Acessando a URL: {url}")
     campo_usuario = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//*[@id="username"]')))
