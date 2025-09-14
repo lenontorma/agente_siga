@@ -10,7 +10,6 @@ import time
 import shutil
 from dotenv import load_dotenv
 
-# --- (Suas constantes e configurações de caminho continuam as mesmas) ---
 load_dotenv()
 USUARIO_SIGA = os.getenv("USUARIO_SIGA")
 SENHA_SIGA = os.getenv("SENHA_SIGA")
@@ -26,9 +25,7 @@ LOCATOR_FLAG_LOGIN = (By.XPATH, "//label[@for='delsession']")
 LOCATOR_BOTÃO_FISC = (By.XPATH, '//*[@id="manage-content"]/div[1]/div[2]/div[2]/div/div[2]/div[3]/div[2]/div[2]/div[2]/div[1]/button[1]') 
 LOCATOR_BOTÃO_SUL_FISC = (By.XPATH, '//*[@id="manage-content"]/div[1]/div[2]/div[2]/div/div[2]/div[3]/div[2]/div[2]/div[2]/div[2]/div[3]/div[1]')
 
-# --- (As funções de setup, login, navegação, etc. continuam as mesmas) ---
 def configurar_driver(caminho_download):
-    #...código existente...
     print(f"Configurando downloads para a pasta: {caminho_download}")
     if not os.path.exists(caminho_download):
         os.makedirs(caminho_download)
@@ -47,38 +44,36 @@ def configurar_driver(caminho_download):
     return driver
 
 def fazer_login(driver, usuario, senha):
-    #...código existente...
     url = URL_SITE
     driver.get(url)
-    print(f"Acessando a URL: {url}")
-    campo_usuario = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//*[@id="username"]')))
+    print("Acessando a URL")
+    campo_usuario = WebDriverWait(driver, 12).until(EC.presence_of_element_located((By.XPATH, '//*[@id="username"]')))
     campo_usuario.send_keys(usuario)
-    campo_senha = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//*[@id="password"]')))
+    campo_senha = WebDriverWait(driver, 12).until(EC.presence_of_element_located((By.XPATH, '//*[@id="password"]')))
     campo_senha.send_keys(senha)
-    botao_login = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="sign-in"]/div/span/span')))
+    botao_login = WebDriverWait(driver, 12).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="sign-in"]/div/span/span')))
     botao_login.click()
     print("Primeira tentativa de login realizada...")
     try:
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located(LOCATOR_SUCESSO_LOGIN))
+        WebDriverWait(driver, 12).until(EC.presence_of_element_located(LOCATOR_SUCESSO_LOGIN))
         print("✅ Login bem-sucedido na primeira tentativa.")
         return
     except TimeoutException:
         print("[AVISO] Login inicial falhou. Executando plano de recuperação...")
-        campo_senha_recuperacao = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//*[@id="password"]')))
+        campo_senha_recuperacao = WebDriverWait(driver, 12).until(EC.presence_of_element_located((By.XPATH, '//*[@id="password"]')))
         campo_senha_recuperacao.clear()
         campo_senha_recuperacao.send_keys(senha)
         print(" -> Senha inserida novamente.")
-        flag_login = WebDriverWait(driver, 10).until(EC.element_to_be_clickable(LOCATOR_FLAG_LOGIN))
+        flag_login = WebDriverWait(driver, 12).until(EC.element_to_be_clickable(LOCATOR_FLAG_LOGIN))
         flag_login.click()
         print(" -> Flag de login clicada.")
-        botao_login_recuperacao = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="sign-in"]/div/span/span')))
+        botao_login_recuperacao = WebDriverWait(driver, 12).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="sign-in"]/div/span/span')))
         botao_login_recuperacao.click()
         print(" -> Segunda tentativa de login realizada.")
         WebDriverWait(driver, 20).until(EC.presence_of_element_located(LOCATOR_SUCESSO_LOGIN))
         print("✅ Login bem-sucedido na segunda tentativa.")
 
 def navegar_para_area(driver, locator_principal, locator_secundario, nome_da_area):
-    #...código existente...
     print(f"Navegando para a área '{nome_da_area}'...")
     clicar_elemento_com_tentativas(driver, locator_principal)
     print(f"Clicou no botão principal de '{nome_da_area}'.")
@@ -86,8 +81,7 @@ def navegar_para_area(driver, locator_principal, locator_secundario, nome_da_are
     clicar_elemento_com_tentativas(driver, locator_secundario)
     print(f"Navegou com sucesso para a sub-área de '{nome_da_area}'.")
 
-def clicar_elemento_com_tentativas(driver, locator, tentativas=3, timeout=15):
-    #...código existente...
+def clicar_elemento_com_tentativas(driver, locator, tentativas=3, timeout=20):
     for tentativa in range(tentativas):
         try:
             elemento = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable(locator))
@@ -99,7 +93,6 @@ def clicar_elemento_com_tentativas(driver, locator, tentativas=3, timeout=15):
     raise TimeoutException(f"Não foi possível clicar no elemento {locator} após {tentativas} tentativas.")
     
 def configurar_filtros_e_visualizacao(driver, alvo_atual):
-    #...código existente...
     print("Configurando filtros e visualização...")
     clicar_elemento_com_tentativas(driver, (By.CSS_SELECTOR, "button[data-ofsc-id='dc__top_panel__page_selector__list__btn']"))
     print("Clicou em 'Visualização em Lista'.")
@@ -115,17 +108,17 @@ def configurar_filtros_e_visualizacao(driver, alvo_atual):
     clicar_elemento_com_tentativas(driver, (By.XPATH, "(//button[@title='Aplicar'])[2]"))
     print("Filtros e visualização aplicados.")
 
-# --- FUNÇÃO DE EXPORTAÇÃO ATUALIZADA E ROBUSTA ---
+# --- FUNÇÃO DE EXPORTAÇÃO ATUALIZADA ---
 def exportar_e_renomear_arquivo(driver, caminho_download, novo_nome_base, alvo_atual):
     """
     Clica em Ações, Exportar, aguarda o download de forma robusta e renomeia o arquivo.
     """
     print("Iniciando processo de exportação...")
     
-    # Verifica se o botão "Ações" está disponível (crítico para FISC)
+    # Verifica se o botão "Ações" está disponível
     if alvo_atual == "FISC":
         try:
-            WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "(//button[@title='Ações'])")))
+            WebDriverWait(driver, 12).until(EC.element_to_be_clickable((By.XPATH, "(//button[@title='Ações'])")))
         except TimeoutException:
             print("[AVISO] Botão 'Ações' não disponível para FISC. Pulando download.")
             return
@@ -152,7 +145,7 @@ def exportar_e_renomear_arquivo(driver, caminho_download, novo_nome_base, alvo_a
     clicar_elemento_com_tentativas(driver, (By.CSS_SELECTOR, "body > div.app-menu-container-wrapper > div > div > button:nth-child(2)"))
 
     # 3. Aguarda de forma inteligente pelo novo arquivo
-    print("Aguardando a conclusão do download de forma robusta...")
+    print("Aguardando a conclusão do download...")
     tempo_limite = 300
     tempo_inicial = time.time()
     arquivo_baixado = None
@@ -173,7 +166,7 @@ def exportar_e_renomear_arquivo(driver, caminho_download, novo_nome_base, alvo_a
                 print(f"  - Novo arquivo detectado: '{nome_arquivo_novo}'")
                 break
         
-        time.sleep(1)
+        time.sleep(3)
 
     if not arquivo_baixado:
         raise TimeoutException("Download não foi concluído ou o novo arquivo não foi detectado no tempo limite.")
@@ -188,7 +181,6 @@ def exportar_e_renomear_arquivo(driver, caminho_download, novo_nome_base, alvo_a
 
 
 def main():
-    # ... (código existente)
     alvos = ["COI", "FISC"]
     driver = None
     try:
