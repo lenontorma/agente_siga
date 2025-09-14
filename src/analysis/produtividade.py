@@ -5,9 +5,12 @@ from zoneinfo import ZoneInfo
 import os
 import shutil
 
-def gerar_resumo_produtividade(df: pd.DataFrame, 
-                               seccional: Optional[str] = None, 
-                               processo: Optional[str] = None) -> str:
+# As funções gerar_resumo_produtividade, _gerar_html_base, _categorizar_status
+# e gerar_relatorio_detalhado_equipe_html continuam exatamente as mesmas.
+# Omiti o código delas aqui para focar na alteração, mas elas devem
+# permanecer no seu arquivo como estavam.
+
+def gerar_resumo_produtividade(df: pd.DataFrame, seccional: Optional[str] = None, processo: Optional[str] = None) -> str:
     """Filtra e gera um resumo simples de produtividade por status."""
     df_filtrado = df.copy()
     filtros_aplicados = []
@@ -45,14 +48,7 @@ def _gerar_html_base(titulo: str, conteudo_body: str) -> str:
             th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
             th {{ background-color: #f2f2f2; }}
             tr:nth-child(even) {{ background-color: #f9f9f9; }}
-            a {{ color: #007bff; text-decoration: none; font-weight: bold; }}
-            a:hover {{ text-decoration: underline; }}
             .total-column {{ background-color: #e0e0e0; font-weight: bold; }}
-            .voltar-btn {{
-                display: inline-block; padding: 10px 15px; margin-bottom: 20px;
-                background-color: #007bff; color: white; text-decoration: none;
-                border-radius: 5px;
-            }}
         </style>
     </head>
     <body>
@@ -76,60 +72,29 @@ def _categorizar_status(df: pd.DataFrame) -> pd.DataFrame:
     return df_categorizado[df_categorizado['categoria_status'].isin(categorias_relevantes)]
 
 
-def gerar_relatorio_detalhado_equipe_html(df: pd.DataFrame, nome_equipe: str) -> str:
-    """Gera o HTML para a página de detalhes de uma única equipe."""
-    df_equipe = df[df['Recurso'] == nome_equipe].copy()
-    df_categorizado = _categorizar_status(df_equipe)
-    if df_categorizado.empty:
-        return _gerar_html_base(f"Detalhes - {nome_equipe}", f"<h2>Detalhes da Equipe: {nome_equipe}</h2><p>Nenhuma atividade com status relevante encontrada.</p>")
-    detalhe = df_categorizado.groupby(['Tipo de Atividade'])['categoria_status'].value_counts().unstack(fill_value=0)
-    for cat in ['Concluído', 'Não Concluído', 'Pendentes']:
-        if cat not in detalhe.columns: detalhe[cat] = 0
-    detalhe['Total'] = detalhe['Concluído'] + detalhe['Não Concluído']
-    ordem_colunas = ['Concluído', 'Não Concluído', 'Total', 'Pendentes']
-    detalhe = detalhe[ordem_colunas]
-    detalhe = detalhe.reset_index()
-    tabela_detalhes_html = detalhe.to_html(index=False, classes='table', border=1)
-    fuso_horario_brasil = ZoneInfo("America/Sao_Paulo"); agora = datetime.now(fuso_horario_brasil)
-    conteudo = f"""
-        <h2>Detalhes da Equipe: {nome_equipe}</h2>
-        <h4>Gerado em: {agora.strftime('%d/%m/%Y %H:%M:%S')}</h4>
-        <a href="../relatorio_produtividade.html" class="voltar-btn">&lt; Voltar para o Relatório Principal</a>
-        <h3>Contagem por Tipo de Atividade</h3>
-        {tabela_detalhes_html}
-    """
-    return _gerar_html_base(f"Detalhes - {nome_equipe}", conteudo)
-
-
-def gerar_relatorio_principal_html(df: pd.DataFrame,
+def gerar_relatorio_detalhado_html(df: pd.DataFrame,
                                    seccional: Optional[str] = None,
                                    processo: Optional[str] = None) -> str:
     """
-    Filtra os dados e gera o HTML principal com o resumo e os links para os detalhes.
+    Filtra os dados e gera o HTML principal com o resumo, SEM links.
     """
-    print(f"\n--- INICIANDO DIAGNÓSTICO DO RELATÓRIO (Filtros: Seccional='{seccional or 'Todas'}', Processo='{processo or 'Todos'}') ---")
-    df_atual = df.copy()
-    total_equipes_inicial = df_atual[df_atual['Recurso'].str.startswith('RS-', na=False)]['Recurso'].nunique()
-    print(f"1. Total de equipes (Recursos 'RS-') na base de dados completa: {total_equipes_inicial}")
+
+    df_filtrado = df.copy()
     if seccional:
-        df_atual = df_atual[df_atual['Seccional'].str.strip().str.upper() == seccional.strip().upper()]
+        df_filtrado = df_filtrado[df_filtrado['Seccional'].str.strip().str.upper() == seccional.strip().upper()]
     if processo:
-        df_atual = df_atual[df_atual['Processo'].str.strip().str.upper() == processo.strip().upper()]
-    print(f"2. Equipes restantes após filtros de Seccional/Processo: {df_atual[df_atual['Recurso'].str.startswith('RS-', na=False)]['Recurso'].nunique()}")
-    df_atual = df_atual[df_atual['Recurso'].str.startswith('RS-', na=False)].copy()
-    print(f"3. Equipes restantes após filtro 'RS-': {df_atual['Recurso'].nunique()}")
+        df_filtrado = df_filtrado[df_filtrado['Processo'].str.strip().str.upper() == processo.strip().upper()]
+
+    df_equipes = df_filtrado[df_filtrado['Recurso'].str.startswith('RS-', na=False)].copy()
     atividades_para_excluir = ["Intervalo para almoço", "Indisponibilidade"]
-    df_atual = df_atual[~df_atual['Tipo de Atividade'].isin(atividades_para_excluir)].copy()
-    print(f"4. Equipes restantes após excluir atividades não produtivas: {df_atual['Recurso'].nunique()}")
-    df_atual = df_atual[df_atual['Processo'] != 'CORTE MOTO']
-    print(f"5. Equipes restantes após excluir processo 'CORTE MOTO': {df_atual['Recurso'].nunique()}")
-    if df_atual.empty:
-        print("--- FIM DO DIAGNÓSTICO: Nenhuma equipe/atividade restou. ---\n")
+    df_produtivo = df_equipes[~df_equipes['Tipo de Atividade'].isin(atividades_para_excluir)].copy()
+    df_produtivo = df_produtivo[df_produtivo['Processo'] != 'CORTE MOTO']
+    
+    if df_produtivo.empty:
         return _gerar_html_base("Relatório de Produtividade", "<h1>Relatório de Produtividade</h1><p>Nenhuma atividade produtiva encontrada para os filtros aplicados.</p>")
-    df_categorizado = _categorizar_status(df_atual)
-    print(f"6. Equipes restantes APÓS categorizar e manter apenas status relevantes: {df_categorizado['Recurso'].nunique()}")
-    print("--- FIM DO DIAGNÓSTICO ---\n")
         
+    df_categorizado = _categorizar_status(df_produtivo)
+
     if df_categorizado.empty:
         return _gerar_html_base("Relatório de Produtividade", "<h1>Relatório de Produtividade</h1><p>Nenhuma atividade com status relevante encontrada.</p>")
 
@@ -142,33 +107,35 @@ def gerar_relatorio_principal_html(df: pd.DataFrame,
     relatorio = relatorio.sort_values(by=['Processo', 'Total'], ascending=[True, False])
     relatorio = relatorio.reset_index()
 
-    def criar_link(recurso): return f'<a href="reports/{recurso}.html">{recurso}</a>'
-    def formatar_celula_total(valor): return f'<span class="total-cell">{valor}</span>'
     fuso_horario_brasil = ZoneInfo("America/Sao_Paulo"); agora = datetime.now(fuso_horario_brasil)
+    
+    # --- ALTERAÇÃO APLICADA AQUI ---
+    # Removemos a função 'criar_link' e o argumento 'formatters' para não gerar links.
+    # Também removemos a pasta 'reports' já que não haverá mais detalhes.
     tabela_principal_html = relatorio.to_html(
-        index=False, escape=False, classes='table', border=1,
-        formatters={'Recurso': criar_link, 'Total': formatar_celula_total}
+        index=False,
+        escape=False,
+        classes='table',
+        border=1
     )
+    
     filtros_texto = f"Filtros Aplicados: Seccional='{seccional or 'Todas'}', Processo='{processo or 'Todos'}'"
     conteudo = f"<h2>Relatório de Produtividade por Equipe</h2><h4>{filtros_texto}</h4><h4>Gerado em: {agora.strftime('%d/%m/%Y %H:%M:%S')}</h4>{tabela_principal_html}"
     return _gerar_html_base("Relatório de Produtividade", conteudo)
 
+# --- Bloco para Teste e Geração do relatório principal ---
 if __name__ == '__main__':
-    print("--- Iniciando geração completa dos relatórios de produtividade ---")
+    print("--- Iniciando geração do relatório de produtividade ---")
     try:
         caminho_script = os.path.abspath(__file__)
         caminho_analysis = os.path.dirname(caminho_script)
         caminho_src = os.path.dirname(caminho_analysis)
         caminho_raiz_projeto = os.path.dirname(caminho_src)
         caminho_data = os.path.join(caminho_raiz_projeto, "Data")
-        caminho_relatorios_detalhados = os.path.join(caminho_data, "reports")
         caminho_dados_excel = os.path.join(caminho_data, "prod_gstc.xlsx")
         
-        if os.path.exists(caminho_relatorios_detalhados):
-            shutil.rmtree(caminho_relatorios_detalhados)
-        os.makedirs(caminho_relatorios_detalhados, exist_ok=True)
-        print(f"  - Pasta de relatórios '{os.path.basename(caminho_relatorios_detalhados)}' está limpa e pronta.")
-
+        # --- ALTERAÇÃO APLICADA AQUI ---
+        # Não precisamos mais criar ou limpar a pasta 'reports'
         if not os.path.exists(caminho_dados_excel):
             raise FileNotFoundError(f"Arquivo de dados não encontrado em {caminho_dados_excel}")
 
@@ -180,25 +147,13 @@ if __name__ == '__main__':
         
         print(f"Base de dados carregada com {len(df_completo)} linhas.")
         
-        relatorio_principal_html = gerar_relatorio_principal_html(df_completo)
+        # Gera e salva o relatório principal (agora sem links)
+        relatorio_principal_html = gerar_relatorio_detalhado_html(df_completo)
         caminho_saida_principal = os.path.join(caminho_data, "relatorio_produtividade.html")
         with open(caminho_saida_principal, 'w', encoding='utf-8') as f:
             f.write(relatorio_principal_html)
         print(f"\n✅ Relatório principal salvo em: {caminho_saida_principal}")
 
-        print("\nGerando relatórios detalhados por equipe...")
-        df_equipes_para_relatorio = df_completo[df_completo['Processo'] != 'CORTE MOTO']
-        equipes_unicas = df_equipes_para_relatorio[df_equipes_para_relatorio['Recurso'].str.startswith('RS-', na=False)]['Recurso'].unique()
-        
-        for equipe in equipes_unicas:
-            relatorio_detalhe_html = gerar_relatorio_detalhado_equipe_html(df_completo, equipe)
-            nome_arquivo_detalhe = f"{equipe}.html"
-            caminho_saida_detalhe = os.path.join(caminho_relatorios_detalhados, nome_arquivo_detalhe)
-            with open(caminho_saida_detalhe, 'w', encoding='utf-8') as f:
-                f.write(relatorio_detalhe_html)
-        
-        print(f"✅ {len(equipes_unicas)} relatórios detalhados salvos na pasta: {os.path.basename(caminho_relatorios_detalhados)}")
-        
     except FileNotFoundError as e:
         print(f"\nERRO: {e}")
         print("Certifique-se de que o script de transformação foi executado primeiro.")
