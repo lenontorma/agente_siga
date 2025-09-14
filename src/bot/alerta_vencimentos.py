@@ -13,100 +13,100 @@ finally:
     del sys
 
 from analysis.data_loader import carregar_dados
-from analysis.servicos import classificar_os_para_alerta
+from analysis.servicos import encontrar_os_vencendo_em_x_horas
+from analysis import mappings
 
-def formatar_linhas_os(df_linhas: pd.DataFrame) -> str:
-    """Função auxiliar que formata as linhas de um DataFrame de OS para texto."""
-    texto = ""
-    # Ordena por Data Limite para a mensagem ficar cronológica
-    for _, os_info in df_linhas.sort_values(by='Data Limite').iterrows():
-        data_limite = os_info['Data Limite'].strftime('%d/%m/%Y %H:%M')
-        
-        texto += f"🔩 *Instalação:* `{os_info['Instalação']}`\n"
-        texto += f"   - *Tipo:* {os_info['Tipo de Atividade']}\n"
-        texto += f"   - *Status Atual:* {os_info['Status da Atividade']}\n"
-        texto += f"   - *Vencimento:* {data_limite}\n"
-        texto += f"   - *Equipe:* {os_info['Recurso']}\n"
-        texto += f"   - *Cidade:* {os_info['Cidade']}\n\n"
-    return texto
+def formatar_mensagem_seccional(df_seccional: pd.DataFrame, nome_seccional: str) -> str:
+    """Formata a mensagem para uma seccional específica, agrupando por tipo de alerta."""
+    
+    mensagem = f"🚨 *Alerta de Vencimento de OS (Anexo IV) - Seccional: {nome_seccional.upper()}* 🚨\n"
 
-def enviar_alertas():
-    """
-    Função principal do script de alertas.
-    """
-    print("--- Iniciando script de alerta de vencimentos ---")
+    df_vencidas = df_seccional[df_seccional['Alerta_Tipo'] == 'VENCIDA']
+    df_proximas = df_seccional[df_seccional['Alerta_Tipo'] == 'PRÓXIMO DO VENCIMENTO']
+    
+    if not df_vencidas.empty:
+        mensagem += "\n🆘 *VENCIDAS* 🆘\n"
+        for _, os in df_vencidas.iterrows():
+            # --- MENSAGEM ATUALIZADA COM MAIS DETALHES ---
+            mensagem += f"  - *Instalação:* `{str(os['Instalação'])}`\n"
+            mensagem += f"  - *Tipo de Nota:* {str(os['Tipo de Atividade'])}\n"
+            mensagem += f"  - *Status:* {str(os['Status da Atividade'])}\n"
+            mensagem += f"  - *Cidade:* {str(os['Cidade'])}\n"
+            mensagem += f"  - *Equipe:* {str(os['Recurso'])}\n"
+            mensagem += f"  - *Venceu em:* {os['Data Limite'].strftime('%d/%m/%Y %H:%M')}\n\n"
+    
+    if not df_proximas.empty:
+        mensagem += "\n⚠️ *PRÓXIMAS DO VENCIMENTO (nas próximas 8h)* ⚠️\n"
+        for _, os in df_proximas.iterrows():
+            # --- MENSAGEM ATUALIZADA COM MAIS DETALHES ---
+            mensagem += f"  - *Instalação:* `{str(os['Instalação'])}`\n"
+            mensagem += f"  - *Tipo de Nota:* {str(os['Tipo de Atividade'])}\n"
+            mensagem += f"  - *Status:* {str(os['Status da Atividade'])}\n"
+            mensagem += f"  - *Cidade:* {str(os['Cidade'])}\n"
+            mensagem += f"  - *Equipe:* {str(os['Recurso'])}\n"
+            mensagem += f"  - *Vence às:* {os['Data Limite'].strftime('%d/%m/%Y %H:%M')}\n\n"
+
+    return mensagem
+
+def enviar_alertas_direcionados():
+    """Função principal do script de alertas direcionados."""
+    print("--- Iniciando script de alerta de vencimentos direcionados ---")
     
     caminho_raiz_projeto = os.path.dirname(caminho_src)
     load_dotenv(os.path.join(caminho_raiz_projeto, '.env'))
     
     bot_token = os.getenv("BOT_TOKEN")
-    user_ids_str = os.getenv("TELEGRAM_USER_IDS")
+    if not bot_token:
+        print("ERRO: BOT_TOKEN não encontrado no arquivo .env"); return
 
-    if not bot_token or not user_ids_str:
-        print("ERRO: BOT_TOKEN ou TELEGRAM_USER_IDS não encontrados no arquivo .env")
-        return
-
-    lista_de_ids = [uid.strip() for uid in user_ids_str.split(',')]
-    
     try:
         df_completo = carregar_dados()
         if df_completo.empty:
-            print("Não foi possível carregar os dados. Abortando alertas.")
-            return
+            print("Não foi possível carregar os dados. Abortando."); return
 
-        alertas_classificados = classificar_os_para_alerta(df_completo)
+        df_para_alertar = encontrar_os_vencendo_em_x_horas(df_completo, horas=8)
 
-        df_vencidas = alertas_classificados["vencidas"]
-        df_hoje = alertas_classificados["vencendo_hoje"]
-        df_amanha = alertas_classificados["vencendo_amanha"]
-        
-        df_para_alertar_total = pd.concat([df_vencidas, df_hoje, df_amanha])
-        
-        if df_para_alertar_total.empty:
-            print("Nenhuma OS para alertar. Nenhuma mensagem enviada.")
-            return
-
-        mensagem_final = "🚨 *Alerta de Vencimento de OS (Anexo IV)* 🚨\n"
-        
-        seccionais_com_alerta = df_para_alertar_total['Seccional'].unique()
-        
-        for seccional in sorted(seccionais_com_alerta):
-            mensagem_final += f"\n\n📍 *Seccional: {seccional.upper()}*"
-            mensagem_final += "\n-----------------------------------"
-            
-            # Filtra os alertas para a seccional atual
-            df_vencidas_sec = df_vencidas[df_vencidas['Seccional'] == seccional]
-            df_hoje_sec = df_hoje[df_hoje['Seccional'] == seccional]
-            df_amanha_sec = df_amanha[df_amanha['Seccional'] == seccional]
-            
-            if not df_vencidas_sec.empty:
-                mensagem_final += "\n\n🆘 *VENCIDAS* 🆘\n"
-                mensagem_final += formatar_linhas_os(df_vencidas_sec)
-
-            # --- LÓGICA DE UNIFICAÇÃO APLICADA AQUI ---
-            # 1. Concatena os DataFrames de vencimentos próximos
-            df_proximos_sec = pd.concat([df_hoje_sec, df_amanha_sec])
-
-            # 2. Se a lista combinada não estiver vazia, cria a nova seção
-            if not df_proximos_sec.empty:
-                mensagem_final += "\n⚠️ *VENCIMENTO PRÓXIMO* ⚠️\n"
-                mensagem_final += formatar_linhas_os(df_proximos_sec)
+        if df_para_alertar.empty:
+            print("Nenhuma OS para alertar. Nenhuma mensagem enviada."); return
 
         bot = telebot.TeleBot(bot_token)
-        print(f"Enviando alertas agrupados para {len(lista_de_ids)} usuários...")
-        for user_id in lista_de_ids:
-            try:
-                bot.send_message(user_id, mensagem_final, parse_mode='Markdown')
-                print(f"  - Alerta enviado com sucesso para o usuário ID: {user_id}")
-            except Exception as e:
-                print(f"  - Falha ao enviar para o usuário ID: {user_id}. Erro: {e}")
+        seccionais_com_alerta = df_para_alertar['Seccional'].unique()
+        ids_gerais = mappings.MAPEAMENTO_ALERTAS_SECCIONAL.get('GERAL', [])
 
-        print("--- Script de alerta finalizado com sucesso! ---")
+        for seccional in seccionais_com_alerta:
+            print(f"\nProcessando alertas para a Seccional: {seccional}...")
+            df_da_seccional = df_para_alertar[df_para_alertar['Seccional'] == seccional]
+            
+            if df_da_seccional.empty:
+                continue
 
-    except FileNotFoundError:
-        print("ERRO: Arquivo 'prod_gstc.xlsx' não foi encontrado. Execute a transformação primeiro.")
+            mensagem_seccional = formatar_mensagem_seccional(df_da_seccional, seccional)
+            ids_seccional = mappings.MAPEAMENTO_ALERTAS_SECCIONAL.get(seccional.upper(), [])
+            ids_para_notificar = set(ids_seccional + ids_gerais)
+            
+            if not ids_para_notificar:
+                print(f"  - [AVISO] Nenhum usuário cadastrado para receber alertas da seccional '{seccional}'.")
+                continue
+            
+            print(f"  - Enviando {len(df_da_seccional)} alerta(s) para {len(ids_para_notificar)} usuário(s)...")
+            for user_id in ids_para_notificar:
+                try:
+                    # O Telegram tem um limite de 4096 caracteres por mensagem.
+                    # Se a mensagem for muito longa, ela será dividida.
+                    if len(mensagem_seccional) > 4096:
+                        for i in range(0, len(mensagem_seccional), 4096):
+                            bot.send_message(user_id, mensagem_seccional[i:i+4096], parse_mode='Markdown')
+                    else:
+                        bot.send_message(user_id, mensagem_seccional, parse_mode='Markdown')
+                    
+                    print(f"    - Alerta para '{seccional}' enviado com sucesso para o ID: {user_id}")
+                except Exception as e:
+                    print(f"    - Falha ao enviar para o ID: {user_id}. Erro: {e}")
+
+        print("\n--- Script de alerta finalizado com sucesso! ---")
+
     except Exception as e:
         print(f"Ocorreu um erro inesperado no script de alertas: {e}")
 
 if __name__ == "__main__":
-    enviar_alertas()
+    enviar_alertas_direcionados()
