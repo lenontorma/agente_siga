@@ -90,3 +90,25 @@ MAPEAMENTO_ALERTAS_SECCIONAL = {
     'GERAL': LISTA_DE_IDS_PRINCIPAL 
 }
 
+MAPEAMENTO_EQUIPES = {
+    "ARG":"SUL",
+    "BAG":"CAMPANHA",
+    "CAD":"CAMPANHA",
+    "DPE":"CAMPANHA",
+    "LAS":"CAMPANHA",
+    "PIM":"CAMPANHA",
+    "CAM":"CENTRO SUL",
+    "DFE":"CENTRO SUL",
+    "ECZ":"CENTRO SUL",
+    "SLS":"CENTRO SUL",
+    "TAP":"CENTRO SUL",
+    "RIO":"LITORAL SUL",
+    "SVP":"LITORAL SUL",
+    "SJN":"LITORAL SUL",
+    "PEL":"SUL",
+    "CAN":"SUL",
+    "CER":"SUL",
+    "HER":"SUL",
+    "JAG":"SUL",
+    "PIR":"SUL",
+}
