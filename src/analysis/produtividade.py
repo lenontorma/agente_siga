@@ -15,7 +15,7 @@ def gerar_resumo_produtividade(df: pd.DataFrame, seccional: Optional[str] = None
     df_filtrado = df.copy()
     filtros_aplicados = []
     if seccional:
-        df_filtrado = df_filtrado[df_filtrado['Seccional'].str.strip().str.upper() == seccional.strip().upper()]
+        df_filtrado = df_filtrado[df_filtrado['Seccional_Equipe'].str.strip().str.upper() == seccional.strip().upper()]
         filtros_aplicados.append(f"Seccional = '{seccional}'")
     if processo:
         df_filtrado = df_filtrado[df_filtrado['Processo'].str.strip().str.upper() == processo.strip().upper()]
@@ -81,7 +81,7 @@ def gerar_relatorio_detalhado_html(df: pd.DataFrame,
 
     df_filtrado = df.copy()
     if seccional:
-        df_filtrado = df_filtrado[df_filtrado['Seccional'].str.strip().str.upper() == seccional.strip().upper()]
+        df_filtrado = df_filtrado[df_filtrado['Seccional_Equipe'].str.strip().str.upper() == seccional.strip().upper()]
     if processo:
         df_filtrado = df_filtrado[df_filtrado['Processo'].str.strip().str.upper() == processo.strip().upper()]
 
