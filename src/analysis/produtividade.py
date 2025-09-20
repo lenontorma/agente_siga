@@ -123,6 +123,79 @@ def gerar_relatorio_detalhado_html(df: pd.DataFrame,
     conteudo = f"<h2>Relatório de Produtividade por Equipe</h2><h4>{filtros_texto}</h4><h4>Gerado em: {agora.strftime('%d/%m/%Y %H:%M:%S')}</h4>{tabela_principal_html}"
     return _gerar_html_base("Relatório de Produtividade", conteudo)
 
+## --- NOVAS FUNÇÕES GERENCIAIS ADICIONADAS AQUI --- ##
+
+def gerar_visao_geral_status(df: pd.DataFrame) -> str:
+    """Gera um resumo com a contagem total de cada status de atividade."""
+    atividades_para_excluir = ["Intervalo para almoço", "Indisponibilidade"]
+    df_produtivo = df[~df['Tipo de Atividade'].isin(atividades_para_excluir)]
+    if df_produtivo.empty: 
+        return "Nenhuma atividade produtiva encontrada."
+        
+    contagem = df_produtivo['Status da Atividade'].value_counts()
+    total = contagem.sum()
+    
+    resposta = "📊 *Visão Geral de Status (Todas as OS)*\n\n"
+    for status, qtd in contagem.items():
+        percentual = (qtd / total) * 100
+        resposta += f"- *{status}:* {qtd} ({percentual:.2f}%)\n"
+    resposta += f"\n*Total de Atividades Produtivas:* {total}"
+    return resposta
+
+def gerar_resumo_por_seccional(df: pd.DataFrame) -> str:
+    """Gera um resumo de atividades pendentes e concluídas por seccional."""
+    status_concluidos = ['concluído', 'não concluído']
+    status_pendentes = ['deslocamento', 'pendente', 'iniciado']
+    
+    df_copy = df.copy() # Garante que o dataframe original não seja modificado
+    df_copy['categoria_status'] = 'Outros'
+    df_lower_status = df_copy['Status da Atividade'].str.lower()
+    df_copy.loc[df_lower_status.isin(status_concluidos), 'categoria_status'] = 'Concluídos'
+    df_copy.loc[df_lower_status.isin(status_pendentes), 'categoria_status'] = 'Pendentes'
+    
+    resumo = df_copy.groupby('Seccional_Equipe')['categoria_status'].value_counts().unstack(fill_value=0)
+    
+    if 'Concluídos' not in resumo.columns: resumo['Concluídos'] = 0
+    if 'Pendentes' not in resumo.columns: resumo['Pendentes'] = 0
+    
+    resumo = resumo[['Concluídos', 'Pendentes']].sort_values(by='Pendentes', ascending=False)
+    
+    resposta = "🏢 *Resumo por Seccional*\n\n"
+    for seccional, dados in resumo.iterrows():
+        resposta += f"*{seccional}:*\n"
+        resposta += f"  - ✅ Concluídos: {dados['Concluídos']}\n"
+        resposta += f"  - ⏳ Pendentes: {dados['Pendentes']}\n\n"
+        
+    return resposta
+
+def gerar_resumo_por_processo(df: pd.DataFrame) -> str:
+    """Gera um resumo de atividades pendentes e concluídas por processo."""
+    status_concluidos = ['concluído', 'não concluído']
+    status_pendentes = ['deslocamento', 'pendente', 'iniciado']
+    
+    df_copy = df.copy() # Garante que o dataframe original não seja modificado
+    df_copy['categoria_status'] = 'Outros'
+    df_lower_status = df_copy['Status da Atividade'].str.lower()
+    df_copy.loc[df_lower_status.isin(status_concluidos), 'categoria_status'] = 'Concluídos'
+    df_copy.loc[df_lower_status.isin(status_pendentes), 'categoria_status'] = 'Pendentes'
+    
+    df_filtrado = df_copy[df_copy['Processo'] != '']
+    
+    resumo = df_filtrado.groupby('Processo')['categoria_status'].value_counts().unstack(fill_value=0)
+    
+    if 'Concluídos' not in resumo.columns: resumo['Concluídos'] = 0
+    if 'Pendentes' not in resumo.columns: resumo['Pendentes'] = 0
+    
+    resumo = resumo[['Concluídos', 'Pendentes']].sort_values(by='Pendentes', ascending=False)
+    
+    resposta = "⚙️ *Resumo por Processo*\n\n"
+    for processo, dados in resumo.iterrows():
+        resposta += f"*{processo}:*\n"
+        resposta += f"  - ✅ Concluídos: {dados['Concluídos']}\n"
+        resposta += f"  - ⏳ Pendentes: {dados['Pendentes']}\n\n"
+        
+    return resposta
+
 # --- Bloco para Teste e Geração do relatório principal ---
 if __name__ == '__main__':
     print("--- Iniciando geração do relatório de produtividade ---")

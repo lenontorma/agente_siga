@@ -135,3 +135,30 @@ def gerar_relatorio_vencimentos_anexo_iv(df: pd.DataFrame, seccional: Optional[s
         conteudo += df_amanha[colunas_importantes].to_html(index=False, classes='table', border=1, formatters=formatters)
         
     return _gerar_html_base("Vencimentos Anexo IV", conteudo)
+
+## --- NOVA FUNÇÃO GERENCIAL ADICIONADA AQUI --- ##
+
+def gerar_resumo_alertas(df: pd.DataFrame) -> str:
+    """
+    Reutiliza a lógica de alertas para fornecer uma contagem rápida e
+    formatada para o menu gerencial.
+    """
+    # Reutilizamos a função principal deste mesmo módulo
+    alertas_classificados = classificar_os_para_alerta(df)
+    
+    df_vencidas = alertas_classificados["vencidas"]
+    df_hoje = alertas_classificados["vencendo_hoje"]
+    df_amanha = alertas_classificados["vencendo_amanha"]
+
+    total = len(df_vencidas) + len(df_hoje) + len(df_amanha)
+    
+    if total == 0:
+        return "✅ *Situação dos Alertas de Vencimento*\n\nNenhuma OS de Anexo IV com vencimento próximo."
+
+    resposta = "🚨 *Situação dos Alertas de Vencimento (Anexo IV)*\n\n"
+    resposta += f"🆘 *Vencidas:* {len(df_vencidas)}\n"
+    resposta += f"⚠️ *Vencendo Hoje:* {len(df_hoje)}\n"
+    resposta += f"🗓️ *Vencendo Amanhã (até 08h):* {len(df_amanha)}\n"
+    resposta += f"\n*Total de OS em Alerta:* {total}"
+    
+    return resposta
