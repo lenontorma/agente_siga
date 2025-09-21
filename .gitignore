@@ -174,3 +174,6 @@ poetry.toml
 pyrightconfig.json
 
 prod_coi.csv
+prod_fisc.csv
+prod_gstc.xslx
+log_de_uso_bot.csv
