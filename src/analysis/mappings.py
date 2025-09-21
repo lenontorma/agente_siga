@@ -30,7 +30,6 @@ MAPEAMENTO_PROCESSO = {
     'A0': 'FISCALIZACAO'
 }
 
-
 MAPEAMENTO_SECCIONAL = {
     "BAGE": "CAMPANHA",
     "DOM PEDRITO": "CAMPANHA",
@@ -73,14 +72,12 @@ MAPEAMENTO_SECCIONAL = {
     "SAO JERONIMO": "CENTRO SUL",
 }
 
-
 ATIVIDADES_ANEXO_IV = {
     "RELIGABT - Religação de Baixa Tensão",
     "TROCPABT - Troca Padrão Baixa Tensão (BT)",
     "LIGANOVA - Ligação Nova",
     "DSBTPDCL - Desligamento De Unidade Consumidora"
 }
-
 
 MAPEAMENTO_ALERTAS_SECCIONAL = {
     'SUL': LISTA_DE_IDS_PRINCIPAL,
@@ -112,7 +109,6 @@ MAPEAMENTO_EQUIPES = {
     "JAG":"SUL",
     "PIR":"SUL",
 }
-
 
 MAPEAMENTO_CORES_STATUS = {
     'iniciado': 'purple',
