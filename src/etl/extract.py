@@ -47,27 +47,27 @@ def fazer_login(driver, usuario, senha):
     url = URL_SITE
     driver.get(url)
     print("Acessando a URL")
-    campo_usuario = WebDriverWait(driver, 12).until(EC.presence_of_element_located((By.XPATH, '//*[@id="username"]')))
+    campo_usuario = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="username"]')))
     campo_usuario.send_keys(usuario)
-    campo_senha = WebDriverWait(driver, 12).until(EC.presence_of_element_located((By.XPATH, '//*[@id="password"]')))
+    campo_senha = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="password"]')))
     campo_senha.send_keys(senha)
-    botao_login = WebDriverWait(driver, 12).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="sign-in"]/div/span/span')))
+    botao_login = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="sign-in"]/div/span/span')))
     botao_login.click()
     print("Primeira tentativa de login realizada...")
     try:
-        WebDriverWait(driver, 12).until(EC.presence_of_element_located(LOCATOR_SUCESSO_LOGIN))
+        WebDriverWait(driver, 15).until(EC.presence_of_element_located(LOCATOR_SUCESSO_LOGIN))
         print("✅ Login bem-sucedido na primeira tentativa.")
         return
     except TimeoutException:
         print("[AVISO] Login inicial falhou. Executando plano de recuperação...")
-        campo_senha_recuperacao = WebDriverWait(driver, 12).until(EC.presence_of_element_located((By.XPATH, '//*[@id="password"]')))
+        campo_senha_recuperacao = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="password"]')))
         campo_senha_recuperacao.clear()
         campo_senha_recuperacao.send_keys(senha)
         print(" -> Senha inserida novamente.")
-        flag_login = WebDriverWait(driver, 12).until(EC.element_to_be_clickable(LOCATOR_FLAG_LOGIN))
+        flag_login = WebDriverWait(driver, 15).until(EC.element_to_be_clickable(LOCATOR_FLAG_LOGIN))
         flag_login.click()
         print(" -> Flag de login clicada.")
-        botao_login_recuperacao = WebDriverWait(driver, 12).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="sign-in"]/div/span/span')))
+        botao_login_recuperacao = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="sign-in"]/div/span/span')))
         botao_login_recuperacao.click()
         print(" -> Segunda tentativa de login realizada.")
         WebDriverWait(driver, 20).until(EC.presence_of_element_located(LOCATOR_SUCESSO_LOGIN))
@@ -118,7 +118,7 @@ def exportar_e_renomear_arquivo(driver, caminho_download, novo_nome_base, alvo_a
     # Verifica se o botão "Ações" está disponível
     if alvo_atual == "FISC":
         try:
-            WebDriverWait(driver, 12).until(EC.element_to_be_clickable((By.XPATH, "(//button[@title='Ações'])")))
+            WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.XPATH, "(//button[@title='Ações'])")))
         except TimeoutException:
             print("[AVISO] Botão 'Ações' não disponível para FISC. Pulando download.")
             return
