@@ -16,10 +16,11 @@ finally:
     if 'sys' in locals(): del sys
 
 # --- CONFIGURAÇÃO DE LOGGING ---
-# Configura o logger para imprimir informações úteis e erros no terminal
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 

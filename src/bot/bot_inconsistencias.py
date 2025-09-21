@@ -4,6 +4,7 @@ from telegram.constants import ParseMode
 import pandas as pd
 import sys
 import os
+from logging_utils import log_command
 
 # Garante que os módulos da pasta 'analysis' possam ser importados
 try:
@@ -43,6 +44,7 @@ def _formatar_inconsistencias_texto(df_resultado: pd.DataFrame, titulo: str) -> 
 
 async def start_inconsistencias(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Inicia a conversa e mostra o menu de verificações."""
+    log_command(update)
     keyboard = [
         [InlineKeyboardButton("Conclusões Incorretas", callback_data="inconsistencia:conclusoes")],
         [InlineKeyboardButton("Cancelamentos por equipe", callback_data="inconsistencia:cancelamentos")],

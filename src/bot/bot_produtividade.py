@@ -8,6 +8,7 @@ from telegram.ext import (
 from telegram.constants import ParseMode
 import os
 import sys
+from logging_utils import log_command
 
 # Garante que os módulos da pasta 'analysis' possam ser importados
 try:
@@ -27,6 +28,7 @@ SELECTING_SECCIONAL, SELECTING_PROCESSO, SELECTING_EQUIPE = range(3)
 
 async def start_produtividade(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Inicia a conversa e mostra o primeiro menu (Seccionais)."""
+    log_command(update)
     keyboard = [
         [InlineKeyboardButton("CENTRO SUL", callback_data="seccional:CENTRO SUL")],
         [InlineKeyboardButton("CAMPANHA", callback_data="seccional:CAMPANHA")],
