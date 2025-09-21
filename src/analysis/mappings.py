@@ -112,3 +112,16 @@ MAPEAMENTO_EQUIPES = {
     "JAG":"SUL",
     "PIR":"SUL",
 }
+
+
+MAPEAMENTO_CORES_STATUS = {
+    'iniciado': 'purple',
+    'deslocamento': 'green',
+    'cancelado': 'lightgreen',
+    'pendente': 'orange',
+    'não concluído': 'darkgreen',
+    'concluído': 'darkblue',
+    # Adicione uma cor padrão para qualquer outro status
+    'default': 'gray'
+}
+
