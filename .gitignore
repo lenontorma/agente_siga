@@ -175,5 +175,5 @@ pyrightconfig.json
 
 prod_coi.csv
 prod_fisc.csv
-prod_gstc.xslx
+prod_gstc.xlsx
 log_de_uso_bot.csv
