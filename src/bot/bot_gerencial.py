@@ -3,6 +3,8 @@ from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler, Con
 from telegram.constants import ParseMode
 import sys
 import os
+from logging_utils import log_command
+
 
 try:
     caminho_src = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -20,6 +22,7 @@ SELECTING_REPORT = range(1)
 
 async def start_gerencial(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Resumo geral."""
+    log_command(update)
     keyboard = [
         [InlineKeyboardButton("📊 Relatório Gerencial HTML", callback_data="gerencial:report_html")],
     ]
