@@ -27,7 +27,7 @@ COMMAND_NAME = "produtividade"
 SELECTING_SECCIONAL, SELECTING_PROCESSO, SELECTING_EQUIPE = range(3)
 
 async def start_produtividade(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Inicia a conversa e mostra o primeiro menu (Seccionais)."""
+    """Produtividade das equipes."""
     log_command(update)
     keyboard = [
         [InlineKeyboardButton("CENTRO SUL", callback_data="seccional:CENTRO SUL")],

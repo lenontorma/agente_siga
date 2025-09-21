@@ -19,8 +19,7 @@ COMMAND_NAME = "proximidade"
 
 async def command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Handler para o comando /proximidade.
-    Uso: /proximidade <ID da OS ou Instalação>
+    Possível equipe próxima à nota
     """
     log_command(update)
     chat_id = update.effective_chat.id

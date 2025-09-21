@@ -43,7 +43,7 @@ def _formatar_inconsistencias_texto(df_resultado: pd.DataFrame, titulo: str) -> 
 
 
 async def start_inconsistencias(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Inicia a conversa e mostra o menu de verificações."""
+    """Alerta sobre encerramento incorretos de notas."""
     log_command(update)
     keyboard = [
         [InlineKeyboardButton("Conclusões Incorretas", callback_data="inconsistencia:conclusoes")],
