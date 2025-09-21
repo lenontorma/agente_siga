@@ -5,6 +5,8 @@ from zoneinfo import ZoneInfo
 import os
 import sys
 import numpy as np
+import folium
+from math import radians, sin, cos, sqrt, asin
 
 # --- Bloco de Inicialização para Execução Autônoma ---
 try:
@@ -16,6 +18,7 @@ finally:
 
 # Importa a função auxiliar do nosso módulo de utilitários
 from analysis.utils import gerar_html_base
+from analysis import mappings
 
 def classificar_os_para_alerta(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
     """
@@ -187,3 +190,113 @@ def gerar_resumo_vencimentos_texto(df: pd.DataFrame, seccional: str) -> str:
     resposta += f"  - *TOTAL EM ALERTA:* *{total}*"
     
     return resposta
+
+
+def _haversine(lat1, lon1, lat2, lon2):
+    """Calcula a distância em km entre dois pontos geográficos."""
+    R = 6371
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+    c = 2 * asin(sqrt(a))
+    return R * c
+
+def gerar_mapa_proximidade(df: pd.DataFrame, id_referencia: str) -> str:
+    """
+    Gera um mapa HTML mostrando as 3 equipes/serviços pendentes mais próximos
+    de uma OS ou Instalação de referência.
+    """
+    print(f"\nGerando mapa de proximidade para a referência: '{id_referencia}'...")
+    
+    # --- ALTERAÇÃO APLICADA AQUI ---
+    
+    # 1. Limpa a entrada do usuário
+    id_referencia_limpo = str(id_referencia).strip()
+
+    # 2. Normaliza as colunas de busca do DataFrame para garantir a correspondência
+    # Remove o '.0' de números que foram convertidos para float
+    df['Instalação_norm'] = df['Instalação'].astype(str).str.split('.').str[0]
+    df['OS_norm'] = df['Ordem de Serviço'].astype(str).str.strip()
+
+    # 3. Faz a busca usando as colunas normalizadas
+    df_ref = df[
+        (df['OS_norm'] == id_referencia_limpo) |
+        (df['Instalação_norm'] == id_referencia_limpo)
+    ].copy()
+
+    # --- Fim da Alteração ---
+
+    if df_ref.empty:
+        return f"Referência '{id_referencia}' não encontrada na base de dados."
+    
+    servico_ref = df_ref.iloc[0]
+    lat_ref = pd.to_numeric(servico_ref['Latitude'], errors='coerce')
+    lon_ref = pd.to_numeric(servico_ref['Longitude'], errors='coerce')
+
+    if pd.isna(lat_ref) or pd.isna(lon_ref):
+        return f"A referência '{id_referencia}' não possui coordenadas geográficas válidas."
+
+    status_pendentes = ['deslocamento', 'pendente', 'iniciado']
+    df_candidatos = df[
+        (df['Status da Atividade'].str.lower().isin(status_pendentes)) &
+        (df['Ordem de Serviço'] != servico_ref['Ordem de Serviço'])
+    ].copy()
+    
+    df_candidatos['Latitude'] = pd.to_numeric(df_candidatos['Latitude'], errors='coerce')
+    df_candidatos['Longitude'] = pd.to_numeric(df_candidatos['Longitude'], errors='coerce')
+    df_candidatos.dropna(subset=['Latitude', 'Longitude'], inplace=True)
+
+    if df_candidatos.empty:
+        return f"Nenhum outro serviço pendente com coordenadas encontrado para comparação."
+
+    df_candidatos['Distancia_km'] = df_candidatos.apply(
+        lambda row: _haversine(lat_ref, lon_ref, row['Latitude'], row['Longitude']),
+        axis=1
+    )
+    
+    df_proximos = df_candidatos.sort_values(by='Distancia_km').head(3)
+
+    mapa = folium.Map(location=[lat_ref, lon_ref], zoom_start=12)
+    
+    popup_ref_html = f"""
+    <b>Referência (OS):</b> {servico_ref['Ordem de Serviço']}<br>
+    <b>Equipe:</b> {servico_ref['Recurso']}<br>
+    <b>Tipo:</b> {servico_ref['Tipo de Atividade']}<br>
+    <b>Status:</b> {servico_ref['Status da Atividade']}
+    """
+    folium.Marker(
+        location=[lat_ref, lon_ref],
+        popup=folium.Popup(popup_ref_html, max_width=300),
+        tooltip="SERVIÇO DE REFERÊNCIA",
+        icon=folium.Icon(color='blue', icon='star')
+    ).add_to(mapa)
+
+    for _, os_proxima in df_proximos.iterrows():
+        distancia = round(os_proxima['Distancia_km'], 2)
+        status = str(os_proxima['Status da Atividade']).lower().strip()
+        cor_pin = mappings.MAPEAMENTO_CORES_STATUS.get(status, mappings.MAPEAMENTO_CORES_STATUS['default'])
+        
+        popup_proximo_html = f"""
+        <b>Equipe:</b> {os_proxima['Recurso']}<br>
+        <b>OS:</b> {os_proxima['Ordem de Serviço']}<br>
+        <b>Tipo:</b> {os_proxima['Tipo de Atividade']}<br>
+        <b>Status:</b> {os_proxima['Status da Atividade']}<br>
+        <b>Distância:</b> {distancia} km
+        """
+        folium.Marker(
+            location=[os_proxima['Latitude'], os_proxima['Longitude']],
+            popup=folium.Popup(popup_proximo_html, max_width=300),
+            tooltip=f"{os_proxima['Recurso']} ({distancia} km)",
+            icon=folium.Icon(color=cor_pin, icon='info-sign')
+        ).add_to(mapa)
+        
+        folium.PolyLine(locations=[[lat_ref, lon_ref], [os_proxima['Latitude'], os_proxima['Longitude']]], color='gray', weight=1.5, opacity=0.8).add_to(mapa)
+    
+    map_html_path = 'mapa_proximidade_temp.html'
+    mapa.save(map_html_path)
+    with open(map_html_path, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    os.remove(map_html_path)
+    
+    return html_content
