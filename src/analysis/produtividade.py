@@ -3,10 +3,8 @@ from typing import Optional
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import os
-import shutil
 import sys
 import folium
-from analysis import mappings
 
 # --- Bloco de Inicialização para Execução Autônoma ---
 try:
@@ -18,7 +16,7 @@ finally:
 
 # Importa o módulo de serviços para reutilizar a lógica de alertas
 from analysis import servicos 
-# Importa as funções auxiliares do módulo de utilitários
+from analysis import mappings
 from analysis.utils import gerar_html_base, categorizar_status
 
 def gerar_resumo_produtividade(df: pd.DataFrame, seccional: Optional[str] = None, processo: Optional[str] = None) -> str:

@@ -1,7 +1,7 @@
 import pandas as pd
 from pydantic import BaseModel, ValidationError, Field
 from typing import Optional, Any
-from datetime import datetime, date
+from datetime import datetime
 
 class ContratoDadosBrutos(BaseModel):
     Recurso: Optional[Any] = None

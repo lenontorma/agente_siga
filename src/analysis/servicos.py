@@ -1,10 +1,9 @@
 import pandas as pd
 from typing import Dict, Optional
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import os
 import sys
-import numpy as np
 
 # --- Bloco de Inicialização para Execução Autônoma ---
 try:
@@ -35,10 +34,6 @@ def classificar_os_para_alerta(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
     print(f"  - Encontradas {len(df_vencendo_amanha)} OS vencendo amanhã até as 08:00.")
     return {"vencidas": df_vencidas, "vencendo_hoje": df_vencendo_hoje, "vencendo_amanha": df_vencendo_amanha}
 
-
-def buscar_ordem_servico(df: pd.DataFrame, numero_os: str) -> str:
-    # ... (código existente, sem alterações)
-    pass
 
 def gerar_relatorio_vencimentos_anexo_iv(df: pd.DataFrame, seccional: Optional[str] = None) -> str:
     # ... (código existente, sem alterações)

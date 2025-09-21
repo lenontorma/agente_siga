@@ -13,7 +13,6 @@ finally:
 # --- Imports ajustados para serem absolutos a partir de 'src' ---
 from etl.contracts import ContratoDadosBrutos, validar_dados
 from analysis import mappings
-import openpyxl
 import numpy as np
 from datetime import datetime
 from zoneinfo import ZoneInfo
